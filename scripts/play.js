@@ -14,6 +14,7 @@ import { snake } from "./snake.js";
 import { sprite } from "./draw.js";
 import { drawmur } from "./draw.js";
 import { drawfood } from "./draw.js";
+import { fetchNiveau } from "./Json.js";
 
 const play = (
   nbFruits,
@@ -24,7 +25,8 @@ const play = (
   randInt,
   difficulte,
   Autorespawn,
-  typepomme
+  typepomme,
+  niveau
 ) => {
   var nbCells = document.querySelector("#taille");
   if (timingstamp >= 5) {
@@ -32,9 +34,9 @@ const play = (
   } else {
     timingstamp = Math.pow(2, 7 - timingstamp);
   }
-  console.log(timingstamp);
   page.innerHTML =
     '<div id="affichage"><div id="score" class="score">Score :&nbsp<span id="scoreNum">0</span></div><div id="high" class="high">High Score :&nbsp<span id="highNum">0</span></div></div><canvas id="zone" width="400" height="400"></canvas><img id="source" style="display:none;" src="./image/snake-sprite.png"width="320" height="256"><img id="inverted" style="display:none;" src="./image/snake-sprite-inverted.png"width="320" height="256"><img id="image-mur" style="display:none;" src="./image/Mur.png"width="320" height="256"><div id="BTN-jouer"><button id="pause">Pause</button><button id="return">Retour</button></div>';
+  // prend les élément nécessaire
   var canvas = document.getElementById("zone");
   var context = canvas.getContext("2d");
   var image = document.querySelector("#source");
@@ -54,17 +56,20 @@ const play = (
   var tabFood = [];
   var invisible = false;
   var tabMur = [];
-  createMur(nbMur, tabMur, randInt, grid);
-  for (let i = 0; i < nbFruits; i++) {
-    createFood(i, tabFood, tabMur, randInt, grid, typepomme);
+  let invi;
+  if (niveau == "") {
+    createMur(nbMur, tabMur, randInt, grid);
+    for (let i = 0; i < nbFruits; i++) {
+      createFood(i, tabFood, tabMur, randInt, grid, typepomme);
+    }
+  } else {
+    fetchNiveau(niveau, tabFood, nbFruits, tabMur, snake, pixels);
+    nbFruits = tabFood.length;
   }
   function snakeOver(snake) {
     var myAudio1 = document.createElement("audio");
     myAudio1.src = "./sound/bruitTete.mp3";
     myAudio1.play();
-    var myAudio2 = document.createElement("audio");
-    myAudio2.src = "./sound/musiqueOver.mp3";
-    myAudio2.play();
     //remise à zéro du serpent
     snake.x = 160;
     snake.y = 160;
@@ -72,6 +77,11 @@ const play = (
     snake.maxCells = 4;
     snake.dx = grid;
     snake.dy = 0;
+    //remet à zéro pour l'invisible
+    clearTimeout(invi);
+    image = document.getElementById("source");
+    invisible = false;
+    //clearInterval(t);
     //remet a zéro le css highscore et score
     let high = document.querySelector("#high");
     let score = document.querySelector("#score");
@@ -79,9 +89,14 @@ const play = (
     high.classList.add("high");
     score.classList.remove("meilleur");
     score.classList.add("score");
-    createMur(nbMur, tabMur, randInt, grid);
-    for (let i = 0; i < nbFruits; i++) {
-      createFood(i, tabFood, tabMur, randInt, grid, typepomme);
+    // Regénére le niveau ou une map aléatoire
+    if (niveau == "") {
+      createMur(nbMur, tabMur, randInt, grid);
+      for (let i = 0; i < nbFruits; i++) {
+        createFood(i, tabFood, tabMur, randInt, grid, typepomme);
+      }
+    } else {
+      fetchNiveau(niveau, tabFood, nbFruits, tabMur, snake, pixels);
     }
     //met en pause si l'autorespawn n'est pas activer
     if (!Autorespawn) {
@@ -182,7 +197,7 @@ const play = (
           if (tabFood[i].type == "invisible") {
             invisible = true;
             image = document.getElementById("inverted");
-            setTimeout(() => {
+            invi = setTimeout(() => {
               var i = 0;
               let t = setInterval(() => {
                 i++;
@@ -253,9 +268,8 @@ const play = (
         // si la tete du serpent est sur une autre cellule du serpent, le jeu est perdu
         if (border == true) {
           if (
-            checkbordure(snake, canvas, grid, cell, i) == true ||
-            (checksnake(snake, canvas, grid, cell, i) == true &&
-              invisible == false)
+            checkbordure(snake, canvas, grid) == true ||
+            (checksnake(snake, cell, i) == true && invisible == false)
           ) {
             console.log("bordure");
             if (score > max) {
@@ -293,6 +307,26 @@ const play = (
       }
       sprite(snake, context, indexCopy, image, grid);
     });
+    function gameToArray() {
+      //creer un tableau de 2 dimensions de taille canvas.width/grid
+      var tab = new Array(canvas.width / grid);
+      for (var i = 0; i < tab.length; i++) {
+        tab[i] = new Array(canvas.height / grid);
+      }
+      //remplir le tableau avec la postion des murs represente par "MUR"
+      for (var i = 0; i < tabMur.length; i++) {
+        tab[tabMur[i].x / grid][tabMur[i].y / grid] = "MUR";
+      }
+      //remplir le tableau avec la postion des pommes represente par "POMME"
+      for (var i = 0; i < tabFood.length; i++) {
+        tab[tabFood[i].x / grid][tabFood[i].y / grid] = "POMME";
+      }
+      //remplir le tableau avec la postion du serpent represente par "SERPENT"
+      for (var i = 0; i < snake.cells.length; i++) {
+        tab[snake.cells[i].x / grid][snake.cells[i].y / grid] = "SERPENT";
+      }
+      return tab;
+    }
     function snakeIa() {
       var foodX = tabFood[0].x;
       var foodY = tabFood[0].y;
@@ -364,7 +398,6 @@ const play = (
 
   //event listener
   addEvent(snake, grid);
-  // start the game
 
   // let loader = document.querySelector("#loader");
   let pauseBtn = document.querySelector("#pause");
