@@ -155,6 +155,20 @@ function drawmur(tabMur, context, image, grid) {
     );
   }
 }
-export { sprite };
-export { drawmur };
-export { drawfood };
+//créer un quadrillage avec deux couleurs
+function drawfond(context, canvas, grid) {
+  var taille = canvas.width / grid;
+  for (var i = 0; i < taille; i++) {
+    for (var j = 0; j < taille; j++) {
+      if (j % 2 == i % 2) {
+        context.fillStyle = "#A5AD65";
+        context.fillRect(i * grid, j * grid, grid, grid);
+      } else {
+        context.fillStyle = "#A49F6D";
+        context.fillRect(i * grid, j * grid, grid, grid);
+      }
+    }
+  }
+}
+
+export { sprite, drawfood, drawmur, drawfond };

@@ -8,12 +8,11 @@ import {
   moveSnakeDown,
   checkbordure,
   checksnake,
+  snakeIa,
 } from "./snakeFunc.js";
 import { setScore } from "./score.js";
 import { snake } from "./snake.js";
-import { sprite } from "./draw.js";
-import { drawmur } from "./draw.js";
-import { drawfood } from "./draw.js";
+import { sprite,drawmur,drawfood,drawfond } from "./draw.js";
 import { fetchNiveau } from "./Json.js";
 
 const play = (
@@ -35,7 +34,7 @@ const play = (
     timingstamp = Math.pow(2, 7 - timingstamp);
   }
   page.innerHTML =
-    '<div id="affichage"><div id="score" class="score">Score :&nbsp<span id="scoreNum">0</span></div><div id="high" class="high">High Score :&nbsp<span id="highNum">0</span></div></div><canvas id="zone" width="400" height="400"></canvas><img id="source" style="display:none;" src="./image/snake-sprite.png"width="320" height="256"><img id="inverted" style="display:none;" src="./image/snake-sprite-inverted.png"width="320" height="256"><img id="image-mur" style="display:none;" src="./image/Mur.png"width="320" height="256"><div id="BTN-jouer"><button id="pause">Pause</button><button id="return">Retour</button></div>';
+    '<div id="affichage"><div id="score" class="score">Score :&nbsp<span id="scoreNum">0</span></div><div id="high" class="high">High Score :&nbsp<span id="highNum">0</span></div></div><canvas id="zone" width="400" height="400"></canvas><img id="source" style="display:none;" src="./image/snake-sprite2.png"width="320" height="256"><img id="inverted" style="display:none;" src="./image/snake-sprite2-inverted.png"width="320" height="256"><img id="image-mur" style="display:none;" src="./image/Mur.png"width="320" height="256"><div id="BTN-jouer"><button id="pause">Pause</button><button id="return">Retour</button></div>';
   // prend les élément nécessaire
   var canvas = document.getElementById("zone");
   var context = canvas.getContext("2d");
@@ -57,13 +56,16 @@ const play = (
   var invisible = false;
   var tabMur = [];
   let invi;
+  //créer les murs et les fruits si le niveau est par défaut
   if (niveau == "") {
-    createMur(nbMur, tabMur, randInt, grid);
+    for (let i = 0; i < nbMur; i++) {
+      createMur(i, tabMur, randInt, grid);
+    }
     for (let i = 0; i < nbFruits; i++) {
-      createFood(i, tabFood, tabMur, randInt, grid, typepomme);
+      createFood(i, tabFood, tabMur,snake, randInt, grid, typepomme);
     }
   } else {
-    fetchNiveau(niveau, tabFood, nbFruits, tabMur, snake, pixels);
+    fetchNiveau(niveau, tabFood, nbFruits, tabMur, snake, pixels,typepomme,randInt,grid);
     nbFruits = tabFood.length;
   }
   function snakeOver(snake) {
@@ -91,12 +93,14 @@ const play = (
     score.classList.add("score");
     // Regénére le niveau ou une map aléatoire
     if (niveau == "") {
-      createMur(nbMur, tabMur, randInt, grid);
+      for (let i = 0; i < nbMur; i++) {
+        createMur(i, tabMur, randInt, grid);
+      }
       for (let i = 0; i < nbFruits; i++) {
-        createFood(i, tabFood, tabMur, randInt, grid, typepomme);
+        createFood(i, tabFood, tabMur,snake, randInt, grid, typepomme);
       }
     } else {
-      fetchNiveau(niveau, tabFood, nbFruits, tabMur, snake, pixels);
+      fetchNiveau(niveau, tabFood, nbFruits, tabMur, snake, pixels,typepomme,randInt,grid);
     }
     //met en pause si l'autorespawn n'est pas activer
     if (!Autorespawn) {
@@ -141,7 +145,6 @@ const play = (
     } else if (snake.x >= canvas.width) {
       snake.x = 0;
     }
-
     var border = boolMur;
 
     //si le serpent sort de l'écran, il réapparait de l'autre côté vertcialement
@@ -152,48 +155,22 @@ const play = (
     if (snake.cells.length > snake.maxCells) {
       snake.cells.pop();
     }
-    // Dessine la nourriture
+    // Dessine la nourriture, les murs et le fond
+    
+    drawfond(context, canvas, grid);
     drawfood(tabFood, context, image, grid);
     drawmur(tabMur, context, imagemur, grid);
-
-    // Dessine le serpent
-
-    function isEmpty(x, y) {
-      var result = true;
-      for (var i = 0; i < tabMur.length; i++) {
-        if (x == tabMur[i].x && y == tabMur[i].y) {
-          result = false;
-        }
-      }
-      //pour chaque cellule du serpent, on verifie si il y a une cellule du serpent qui est sur la meme case
-      for (var i = 1; i < snake.cells.length; i++) {
-        if (x == snake.cells[i].x && y == snake.cells[i].y) {
-          result = false;
-        }
-      }
-      if (x >= canvas.width || x < 0) {
-        return false;
-      }
-      if (y >= canvas.height || y < 0) {
-        return false;
-      }
-      return result;
-    }
 
     var indexCopy;
     snake.cells.forEach(function (cell, index) {
       indexCopy = index;
-      //creation d'une inteligence artificielle qui joue asnake et veut recuperer le plus de nourriture possible
+      //creation d'une inteligence artificielle qui joue au snake et veut recuperer le plus de nourriture possible
 
-      // dessine le serpent avec un padding de 1px
       // le serpent mange la nourriture
       for (var i = 0; i < tabFood.length; i++) {
         if (cell.x === tabFood[i].x && cell.y === tabFood[i].y) {
-          if (tabFood[i].type == "normal") {
-            snake.maxCells++;
-            score += 1;
-            document.getElementById("scoreNum").innerHTML = score;
-          }
+          //different comportement selon le type de pomme
+          //devient invisible pendant 4 secondes
           if (tabFood[i].type == "invisible") {
             invisible = true;
             image = document.getElementById("inverted");
@@ -211,17 +188,17 @@ const play = (
               }, 1000);
             }, 3000);
             snake.maxCells--;
-            score -= 1;
+            score -= 2;
             document.getElementById("scoreNum").innerHTML = score;
           }
           if (tabFood[i].type == "teleport") {
             snake.x = getRandomInt(0, randInt) * grid;
             snake.y = getRandomInt(0, randInt) * grid;
           }
+          //change de direction au hasard
           if (tabFood[i].type == "inverted") {
             var choix = Math.floor(Math.random() * 2);
             if (snake.dy == 0) {
-              console.log(choix);
               if (choix == 0) {
                 snake.dx = 0;
                 snake.dy = grid;
@@ -238,11 +215,11 @@ const play = (
                 snake.dy = 0;
               }
             }
-            snake.maxCells++;
-            score += 1;
-            document.getElementById("scoreNum").innerHTML = score;
           }
-          createFood(i, tabFood, tabMur, randInt, grid, typepomme);
+          snake.maxCells++;
+          score += 1;
+          document.getElementById("scoreNum").innerHTML = score;
+          createFood(i, tabFood, tabMur,snake, randInt, grid, typepomme);
 
           var myAudio = document.createElement("audio");
           myAudio.src = "./sound/bruitMange.mp3";
@@ -269,9 +246,8 @@ const play = (
         if (border == true) {
           if (
             checkbordure(snake, canvas, grid) == true ||
-            (checksnake(snake, cell, i) == true && invisible == false)
+            (checksnake(snake, cell,i) == true && invisible == false)
           ) {
-            console.log("bordure");
             if (score > max) {
               max = score;
             }
@@ -286,25 +262,20 @@ const play = (
         if (border == false) {
           //gestion des bordures, il reaparait de l'autre cote
           if (snake.y < -0) {
-            console.log("negatif");
             snake.y = canvas.height - grid;
           } else if (snake.y >= canvas.height) {
-            console.log("postifi");
             snake.y = 0;
           }
           //si la tete du serpent est sur une autre cellule du serpent, le jeu est perdu
-          if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
+          if (checksnake(snake, cell,i) == true) {
             if (score > max) {
               max = score;
             }
             snakeOver(snake);
-            score = 0;
-            //noter le score
-            document.getElementById("highNum").innerHTML = max;
-            document.getElementById("scoreNum").innerHTML = 0;
           }
         }
       }
+      //dessine le serpent
       sprite(snake, context, indexCopy, image, grid);
     });
     function gameToArray() {
@@ -313,6 +284,13 @@ const play = (
       for (var i = 0; i < tab.length; i++) {
         tab[i] = new Array(canvas.height / grid);
       }
+      //fill le tableau avec des 0
+      for (var i = 0; i < tab.length; i++) {
+        for (var j = 0; j < tab[i].length; j++) {
+          tab[i][j] = "EMPTY";
+        }
+      }
+
       //remplir le tableau avec la postion des murs represente par "MUR"
       for (var i = 0; i < tabMur.length; i++) {
         tab[tabMur[i].x / grid][tabMur[i].y / grid] = "MUR";
@@ -327,58 +305,11 @@ const play = (
       }
       return tab;
     }
-    function snakeIa() {
-      var foodX = tabFood[0].x;
-      var foodY = tabFood[0].y;
-      var distance = 100000;
-      for (let i = 0; i < tabFood.length; i++) {
-        var distanceX = Math.abs(snake.x - tabFood[i].x);
-        var distanceY = Math.abs(snake.y - tabFood[i].y);
-
-        var distanceTotale = distanceX + distanceY;
-        if (distanceTotale < distance) {
-          distance = distanceTotale;
-          foodX = tabFood[i].x;
-          foodY = tabFood[i].y;
-        }
-      }
-      //colorer la case de la nourriture
-      /*context.fillStyle = "red";
-      context.fillRect(foodX, foodY, grid - 1, grid - 1);*/
-
-      //trouver le X et Y de la nourriture la plus proche
-
-      var vector = [snake.cells[0].x - foodX, snake.cells[0].y - foodY];
-      var down = isEmpty(snake.cells[0].x, snake.cells[0].y + grid);
-      var up = isEmpty(snake.cells[0].x, snake.cells[0].y - grid);
-      var left = isEmpty(snake.cells[0].x - grid, snake.cells[0].y);
-      var right = isEmpty(snake.cells[0].x + grid, snake.cells[0].y);
-      var oldDirection = snake.direction;
-      // Get the direction to go
-      var direction = "";
-      if (vector[0] < 0 && right && oldDirection != "left") {
-        direction = "right";
-      } else if (vector[0] > 0 && left && oldDirection != "right") {
-        direction = "left";
-      } else if (vector[1] < 0 && down && oldDirection != "up") {
-        direction = "down";
-      } else if (vector[1] > 0 && up && oldDirection != "down") {
-        direction = "up";
-      }
-      if (direction == "" && down) {
-        direction = "down";
-      } else if (direction == "" && up) {
-        direction = "up";
-      } else if (direction == "" && left) {
-        direction = "left";
-      } else if (direction == "" && right) {
-        direction = "right";
-      }
-      //console.log(direction);
-      return direction;
-    }
+    //uncomment pour voir le tableau 2d
+    //console.log(gameToArray());
+    
     if (ia == true) {
-      var result = snakeIa();
+      var result = snakeIa(tabFood, snake, grid,tabMur,canvas);
       if (result == "up") {
         moveSnakeUp(snake, grid);
       }

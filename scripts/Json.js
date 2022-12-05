@@ -1,3 +1,5 @@
+import {createPlacedFood, createPlacedMur} from "./create.js";
+
 function fetchNiveaumenu(
   niveau,
   mur,
@@ -12,7 +14,7 @@ function fetchNiveaumenu(
   affdifficulte
 ) {
   if (niveau != "") {
-    var url = "http://127.0.0.1:5500/Projet JS/Snake/Json/" + niveau + ".json";
+    var url = "/Json/" + niveau + ".json";
     fetch(url)
       .then(function (response) {
         if (response.ok) {
@@ -22,6 +24,7 @@ function fetchNiveaumenu(
         }
       })
       .then(function (data) {
+        //affecter les valeurs des sliders et span quand on selectionne un niveau
         if (data.bordure == "True") {
           mur.checked = true;
         } else {
@@ -46,8 +49,8 @@ function fetchNiveaumenu(
       });
   }
 }
-function fetchNiveau(niveau, tabFood, nbFruits, tabMur, snake, pixels) {
-  var url = "http://127.0.0.1:5500/Projet JS/Snake/Json/" + niveau + ".json";
+function fetchNiveau(niveau, tabFood, nbFruits, tabMur, snake, pixels,typepomme,randInt,grid) {
+  var url = "/Json/" + niveau + ".json";
   fetch(url)
     .then(function (response) {
       if (response.ok) {
@@ -57,18 +60,13 @@ function fetchNiveau(niveau, tabFood, nbFruits, tabMur, snake, pixels) {
       }
     })
     .then(function (data) {
+      // créer les murs, les fruits et le serpent
       nbFruits = data.food.length;
       for (var i = 0; i < data.food.length; i++) {
-        tabFood[i] = {
-          x: data.food[i][0] * pixels,
-          y: data.food[i][1] * pixels,
-        };
+        createPlacedFood(i, tabFood, grid, typepomme,data.food[i][0],data.food[i][1]);
       }
       for (var i = 0; i < data.walls.length; i++) {
-        tabMur[i] = {
-          x: data.walls[i][0] * pixels,
-          y: data.walls[i][1] * pixels,
-        };
+        createPlacedMur(i, tabMur, grid,data.walls[i][0],data.walls[i][1]);
       }
       for (var i = 0; i < data.snake.length; i++) {
         if (i == 0) {
@@ -79,6 +77,22 @@ function fetchNiveau(niveau, tabFood, nbFruits, tabMur, snake, pixels) {
           x: data.snake[i][0] * pixels,
           y: data.snake[i][1] * pixels,
         };
+      }
+      if (data.direction == "right") {
+        snake.dx = grid;
+        snake.dy = 0;
+      }
+      if (data.direction == "left") {
+        snake.dx = -grid;
+        snake.dy = 0;
+      }
+      if (data.direction == "up") {
+        snake.dx = 0;
+        snake.dy = -grid;
+      }
+      if (data.direction == "down") {
+        snake.dx = 0;
+        snake.dy = grid;
       }
     })
     .catch(function (err) {
