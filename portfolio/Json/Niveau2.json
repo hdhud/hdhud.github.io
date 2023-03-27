@@ -1,0 +1,17 @@
+
+{
+    "taille":3,
+    "typepomme":"True",
+    "bordure":"True",
+    "vitesse":5,
+    "walls": [ [1,1],[2,2],[3,3] ],
+    "food": [
+        [0,0], [35,4], [20,35]
+    ],
+    "snake": [
+      [15,20],
+      [15,21],
+      [15,22]
+    ],
+    "direction":"right"
+} 
